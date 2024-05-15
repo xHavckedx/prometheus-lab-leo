@@ -1,0 +1,4 @@
+*_data
+postgres_exporter
+.env
+postgres_exporter.yml

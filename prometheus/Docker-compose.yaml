@@ -1,0 +1,99 @@
+---
+services:
+  backend:
+    image: prom/prometheus:latest
+    ports:
+      - 5000:9090
+    environment:
+      - PROMETHEUS_USER=${PROMETHEUS_USER}
+      - PROMETHEUS_PASSWORD=${PROMETHEUS_PASSWORD}
+    networks:
+      - prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus_data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.console.libraries=/usr/share/prometheus/console_libraries --web.console.templates=/usr/share/prometheus/consoles
+  
+  
+  frontend:
+    image: grafana/grafana:latest
+    ports:
+      - 5001:3000
+    networks:
+      - prometheus
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    depends_on:
+      - backend
+
+
+  alerta:
+    image: alerta/alerta-web:latest
+    ports:
+      - 5002:8080
+    networks:
+      - prometheus
+    volumes:
+      - ./alerta_data:/var/lib/alerta
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/monitoring
+      - WEB_PORT=8080
+      - API_PORT=8080
+      - AUTH_REQUIRED=true
+      - ADMIN_USERS=${ALERTA_USER}
+      - ADMIN_PASSWORD=${ALERTA_PASSWORD}
+    depends_on:
+      - backend
+      - postgres 
+
+
+  postgres:
+    image: postgres
+    volumes:
+      - ./pg-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: monitoring
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: always
+    ports:
+      - 5003:5432
+    networks:
+      - prometheus
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    ports:
+      - 5004:9100
+    depends_on:
+      - backend
+    networks:
+      - prometheus
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter-linux-amd64
+    container_name: postgres_exporter
+    restart: unless-stopped
+    ports:
+      - 5005:9187
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    volumes:
+      - ./postgres_exporter_data:/var/lib/postgres_exporter
+      - ./postgres_exporter.yml:/etc/postgres_exporter/postgres_exporter.yml
+    depends_on:
+      - backend
+    networks:
+      - prometheus
+
+networks:
+  prometheus:
+    driver: bridge
