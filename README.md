@@ -1,0 +1,20 @@
+## Prometheus first steps lab
+
+--
+
+add .env file inside of the repo like that:
+
+```
+PROMETHEUS_USER=XXXX
+PROMETHEUS_PASSWORD=XXXX
+
+GRAFANA_USER=XXXX
+GRAFANA_PASSWORD=XXXX
+
+POSTGRES_USER=XXXX
+POSTGRES_PASSWORD=XXXX
+POSTGRES_DB=monitoring
+
+ALERTA_USER=XXXX@XXXX.io
+ALERTA_PASSWORD=XXXX
+```
